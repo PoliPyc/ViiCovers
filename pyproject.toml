@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ViiCovers"
-version = "0.2.3"
+version = "0.3"
 description = ""
 authors = ["poliakustyczny <poliakustyczny@gmail.com>"]
 license = "MIT"

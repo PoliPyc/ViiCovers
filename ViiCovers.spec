@@ -1,12 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
 a = Analysis(
     ['app/main.py'],
     pathex=['/home/runner/work/ViiCovers/ViiCovers'],
     binaries=[],
-    datas=[('./data/', '.')],
-    hiddenimports=['PIL._tkinter_finder'],
+    datas=[('./data/*', 'data')],  # Kopiuje zawartość folderu data do folderu data w dist
+    hiddenimports=['PIL._tkinter_finder', 'FreeSimpleGUI', 'PIL'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -25,13 +24,12 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    console=False,  # Zmienione na False, aby ukryć konsolę dla zwykłego użytkownika
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    contents_directory='data',
 )
 coll = COLLECT(
     exe,

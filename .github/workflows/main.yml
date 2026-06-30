@@ -27,18 +27,19 @@ jobs:
       run: poetry install --no-interaction --no-root
 
     - name: Build with PyInstaller
+      uses: sayyid5416/pyinstaller@v1
+      with:
+        spec: ViiCovers.spec
+
+    - name: Pack binary + data into tgz
       run: |
-        ./build.sh
-        
-    - name: Pack binary + data into tar
-      run: |
-        tar -cvf ViiCovers_bundle.tar dist/ViiCovers/data dist/ViiCovers/ViiCovers
+        tar -czvf ViiCovers_linux.tgz -C dist ViiCovers
           
     - name: Upload zipped bundle
       uses: actions/upload-artifact@v4
       with:
-        name: ViiCovers_linux_x86-64
-        path: ViiCovers_bundle.tar
+        name: ViiCovers-linux-bundle
+        path: ViiCovers_linux.tgz
         
   build-windows:
     runs-on: windows-latest
@@ -48,9 +49,14 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10' # Dopasuj do wersji, której używasz
+
     - name: Install Poetry
       run: |
-        (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python
+        (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
       shell: powershell
 
     - name: Add Poetry to PATH
@@ -67,12 +73,14 @@ jobs:
       uses: sayyid5416/pyinstaller@v1
       with:
         spec: ViiCovers.spec
+
+    - name: Pack exe + data into zip
+      run: |
+        Compress-Archive -Path dist\ViiCovers -DestinationPath ViiCovers_windows.zip
+      shell: powershell
       
     - name: Upload zipped bundle
       uses: actions/upload-artifact@v4
       with:
-        name: ViiCovers_windows
-        path: build
-
-
-
+        name: ViiCovers-windows-bundle
+        path: ViiCovers_windows.zip

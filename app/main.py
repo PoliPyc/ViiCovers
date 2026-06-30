@@ -1,7 +1,9 @@
 """Custom cover generator for Virtual Console injections designed for use with USBLoaderGX cover system."""
 
 import base64
+import json
 import os
+import sys
 from io import BytesIO
 from pathlib import Path
 from typing import Optional
@@ -10,7 +12,7 @@ import FreeSimpleGUI as sg # type: ignore
 from PIL import Image, ImageTk # type: ignore
 
 __APP_NAME = "ViiCovers"
-__VERSION = "0.2.3"
+__VERSION = "0.3"
 
 USBLOADER_COVER_FRONT_WIDTH = 160
 USBLOADER_COVER_FRONT_HEIGHT = 224
@@ -20,9 +22,55 @@ FIT_OPTIONS = [
     {"text": "fit to height", "key": "fit_h", "value": "height"},
 ]
 
+class Settings:
+    """Class for managing application settings."""
+
+    def __init__(self, settings_file: str = "settings.json") -> None:
+        """Initialize the Settings object with default values."""
+        self.settings_file: str = settings_file
+        self.input_dir: Optional[Path] = None
+        self.output_dir: Optional[Path] = None
+
+    def load_settings(self) -> None:
+        """Load settings from a json file."""
+        try:
+            with open(self.settings_file, "r") as f:
+                data = json.load(f)
+                self.input_dir = Path(data.get("input_dir", ""))
+                self.output_dir = Path(data.get("output_dir", ""))
+        except FileNotFoundError:
+            print(f"Settings file {self.settings_file} not found. Using default settings.")
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+
+    def save_settings(self) -> None:
+        """Save settings to a json file."""
+        try:
+            with open(self.settings_file, "w") as f:
+                data = {
+                    "input_dir": str(self.input_dir) if self.input_dir else "",
+                    "output_dir": str(self.output_dir) if self.output_dir else "",
+                }
+                json.dump(data, f, indent=4)
+        except Exception as e:
+            print(f"Error saving settings: {e}")
+
+
+setting_file = "settings.json"
+settings = Settings(setting_file)
+settings.load_settings()
+
 root_path = Path(__file__).resolve().parent
-data_path = Path(str(root_path) + "/../data").resolve()
-home_catalog = os.path.expanduser("~")
+
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # Ścieżka wewnątrz spakowanej aplikacji
+    data_path = Path(sys._MEIPASS) / "data"
+else:
+    # Standardowa ścieżka developerska
+    data_path = (root_path / "../data").resolve()
+
+default_dir = os.path.expanduser("~")
+input_dir = settings.input_dir if settings.input_dir else default_dir
 filetypes = (("all images", "*.png *.jpg *.jpeg"),)
 gametypes = ("NES", "SNES", "N64", "GENESIS", "TGX16")
 boxtypes = ("Front", "Back", "Full", "3D")
@@ -112,6 +160,7 @@ class BoxArt:
         return self.cover
 
     def _get_banner(self) -> Image:
+        print(f"{data_path}/banner_{self.boxtype}_{self.gametype}_hq.png")
         return Image.open(
             str(data_path) + f"/banner_{self.boxtype}_{self.gametype}_hq.png"
         )
@@ -134,7 +183,7 @@ def create_layout() -> list:
             [sg.Text("Select cover: ", key="cover_label")]
             + [
                 sg.FileBrowse(
-                    initial_folder=home_catalog,
+                    initial_folder=input_dir if input_dir else default_dir,
                     file_types=filetypes,
                     enable_events=True,
                     key="selected_cover",
@@ -196,6 +245,11 @@ def run():
         event, values = window.read()
         window["cover_label"].expand(expand_x=True)  # broken
         print(event)
+        if event == "selected_cover":
+            #save input directory for future covers
+            settings.input_dir = Path(values["selected_cover"]).parent
+            settings.save_settings()
+
         if event in ("selected_cover", "gametype") or event.startswith("fit_"):
             print("wybrano okładkę")
             print(values)
@@ -217,12 +271,15 @@ def run():
             filename = sg.tk.filedialog.asksaveasfilename(
                 defaultextension="png",
                 filetypes=filetypes,
-                initialdir=home_catalog,
+                initialdir=settings.output_dir if settings.output_dir else default_dir,
                 initialfile=new_boxart.name,  # Option added here
                 parent=window.TKroot,
                 title="Save As",
             )
-            new_boxart.boxart.save(filename)
+            new_boxart.cover.save(filename)
+
+            settings.output_dir = Path(filename).parent
+            settings.save_settings()
         if (
             event == sg.WIN_CLOSED or event == "Cancel"
         ):  # if user closes window or clicks cancel
